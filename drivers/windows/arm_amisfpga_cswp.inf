@@ -1,0 +1,83 @@
+ [Version]
+DriverVer = 12/12/2016,1.0.0.0
+Signature = "$Windows NT$"
+Class=USB
+ClassGUID={36fc9e60-c465-11cf-8056-444553540000}
+Provider = %ProviderName%
+CatalogFile=arm_amisfpga_cswp.cat
+
+; ========== Manufacturer/Models sections ===========
+
+[Manufacturer]
+%ProviderName% = ARMAMISFPGA_WinUSB,NTx86,NTamd64
+
+[ARMAMISFPGA_WinUSB.NTx86]
+%USB\ARMAMISFPGA.DeviceDesc% =USB_Install, USB\VID_05C0&PID_0002&MI_01
+
+[ARMAMISFPGA_WinUSB.NTamd64]
+%USB\ARMAMISFPGA.DeviceDesc% =USB_Install, USB\VID_05C0&PID_0002&MI_01
+
+; =================== Installation ===================
+
+[USB_Install]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[USB_Install.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+[WinUSB_ServiceInstall]
+DisplayName     = %WinUSB_SvcDesc%
+ServiceType     = 1
+StartType       = 3
+ErrorControl    = 1
+ServiceBinary   = %12%\WinUSB.sys
+
+[USB_Install.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+
+[WinUSB_Install]
+KmdfLibraryVersion=1.5
+
+[USB_Install.HW]
+AddReg=Dev_AddReg
+
+[Dev_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{4a52c629-cce2-4bcb-9a34-b99d5dc9bd46}"
+
+[USB_Install.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+[CoInstallers_AddReg]
+HKR,,CoInstallers32,0x00010000,"WdfCoInstaller01005.dll,WdfCoInstaller","WinUSBCoInstaller.dll"
+
+[CoInstallers_CopyFiles]
+WinUSBCoInstaller.dll
+WdfCoInstaller01005.dll
+
+[DestinationDirs]
+CoInstallers_CopyFiles=11
+
+; ================= Source Media Section =====================
+
+[SourceDisksNames]
+1 = %DISK_NAME%,,,\i386
+2 = %DISK_NAME%,,,\amd64
+
+[SourceDisksFiles.x86]
+WinUSBCoInstaller.dll=1
+WdfCoInstaller01005.dll=1
+
+[SourceDisksFiles.amd64]
+WinUSBCoInstaller.dll=2
+WdfCoInstaller01005.dll=2
+
+; =================== Strings ===================
+
+[Strings]
+ProviderName="ARM Ltd"
+USB\ARMAMISFPGA.DeviceDesc="ARM AMIS PoC FPGA CSWP"
+WinUSB_SvcDesc="ARM AMIS PoC FPGA CSWP USB device driver"
+DISK_NAME="ARM AMIS PoC FPGA CSWP USB Driver Installation"

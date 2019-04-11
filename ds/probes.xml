@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<probes
+    xmlns="http://www.arm.com/probe"
+    xmlns:xi="http://www.w3.org/2001/XInclude"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.arm.com/probe ../../../Schemas/probeschema.xsd">
+    
+    <probe>
+        <name>AMIS Debug and Trace over USB</name>
+        <debug_lib name="rddi-memap_cswp" type="RDDI-MEMAP" config="debug_config.xml"/>
+        <trace_lib name="rddi_streaming_trace_amis" config="trace_config.xml"/>
+       
+        <capabilities>
+            <capability>
+                <name>SupportsBrowse</name>
+                <value>False</value>
+            </capability>
+            <capability>
+                <name>SupportsJtagAutodetect</name>
+                <value>False</value>
+            </capability>
+            <capability>
+                <name>ConnectionAddressRequired</name>
+                <value>False</value>
+            </capability>
+        </capabilities>
+        
+    </probe>
+</probes>

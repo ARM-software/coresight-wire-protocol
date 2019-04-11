@@ -1,0 +1,6 @@
+<config>
+    <target type="amis" usbid="05c0:0002" address="AMIS0001"/>
+    <memaps>
+        <ap address="0x30000000" type="mem-ap.v2"/>
+    </memaps>
+</config>

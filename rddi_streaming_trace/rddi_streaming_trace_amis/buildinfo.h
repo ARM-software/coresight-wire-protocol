@@ -1,0 +1,4 @@
+#define REVISION 0
+#define VERSION 2.0
+#define NAME "RDDI_STREAMING_TRACE_AMIS"
+#define BUILD_NUMBER 0

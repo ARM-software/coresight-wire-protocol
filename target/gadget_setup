@@ -1,0 +1,102 @@
+#!/bin/sh
+
+set -e
+
+G0=/sys/kernel/config/usb_gadget/g0/
+
+gadget_setup() {
+  ID_VENDOR=0x05C0
+  ID_PRODUCT=0x0002
+  STR_MANUFACTURER="ARM Ltd"
+  STR_PRODUCT="CoreSight Trace"
+  STR_SERIAL="AMIS0001"
+
+  modprobe libcomposite || true
+  if [ "$USB_DEBUG" ]; then
+    rmmod cusbWrapperDrv || true
+    rmmod cusbCoreDrv || true
+    modprobe cusbCoreDrv debug=1
+    modprobe cusbWrapperDrv debug=1
+  else
+    modprobe cusbWrapperDrv
+  fi
+
+  # configure USB gadget
+  mount -t configfs none /sys/kernel/config/ || true
+
+  # create gadget with one configuration
+  [ -d $G0 ] || mkdir $G0
+  cd $G0
+
+  # setup IDs and strings
+  mkdir -p strings/0x409
+  echo $ID_VENDOR > idVendor
+  echo $ID_PRODUCT > idProduct
+  echo $STR_MANUFACTURER > strings/0x409/manufacturer
+  echo $STR_PRODUCT > strings/0x409/product
+  echo $STR_SERIAL > strings/0x409/serialnumber
+
+  # create trace function
+  mkdir -p functions/coresight_trace.1
+  echo 1 > functions/coresight_trace.1/n_streams
+  mkdir -p functions/coresight_trace.1/tmc.0
+  echo 20800000.etr > functions/coresight_trace.1/tmc.0/name
+
+  # create cswp function
+  mkdir functions/ffs.cswp
+
+  # start CSWP server
+  [ -d /dev/ffs-cswp ] || mkdir /dev/ffs-cswp
+  mount -t functionfs cswp /dev/ffs-cswp
+  /cswp_server /dev/ffs-cswp --logfile /tmp/cswp.log $CSWP_ARGS &
+
+  # bind functions to configurations
+  mkdir -p configs/c.1/strings/0x409
+  echo "CoreSight Trace" >  configs/c.1/strings/0x409/configuration
+  ln -s functions/coresight_trace.1/ configs/c.1/
+  ln -s functions/ffs.cswp/ configs/c.1/
+
+  # bind to USB device - driver specific
+  # echo "40000000.usb" > $G0/UDC
+}
+
+gadget_teardown() {
+
+  # unbind USB device  - driver specific
+  # echo "" > $G0/UDC || true
+
+  # kill cswp server
+  SERVER_PID=$(pidof /cswp_server || true)
+  if [ "$SERVER_PID" ]; then
+    kill $SERVER_PID
+  fi
+  umount /dev/ffs-cswp || true
+
+  # clean up
+  cd $G0
+  [ -e configs/c.1/coresight_trace.1 ] && rm configs/c.1/coresight_trace.1
+  [ -e configs/c.1/ffs.cswp ] && rm configs/c.1/ffs.cswp
+  [ -d configs/c.1/strings/0x409 ] && rmdir configs/c.1/strings/0x409
+  [ -d configs/c.1 ] && rmdir configs/c.1
+
+  [ -d functions/ffs.cswp ] && rmdir functions/ffs.cswp
+  [ -d functions/coresight_trace.1/tmc.0 ] && rmdir functions/coresight_trace.1/tmc.0
+  [ -d functions/coresight_trace.1 ] && rmdir functions/coresight_trace.1
+
+  [ -d strings/0x409 ] && rmdir strings/0x409
+  cd /
+  rmdir $G0
+
+  rmmod cusbWrapperDrv
+  rmmod cusbCoreDrv
+}
+
+case $1 in
+  ""|start)
+    gadget_setup
+    ;;
+
+  stop)
+    gadget_teardown
+    ;;
+esac

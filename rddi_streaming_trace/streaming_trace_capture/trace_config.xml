@@ -1,0 +1,6 @@
+<config>
+    <target type="amis" usbid="05c0:0002" address="AMIS0001" bufsz="1048576" bufwm="524288"/>
+    <sinks>
+        <sink name="20800000.etr" base_address="0x80800000"/>
+    </sinks>
+</config>

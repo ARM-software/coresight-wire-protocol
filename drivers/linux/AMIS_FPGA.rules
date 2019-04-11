@@ -1,0 +1,6 @@
+SUBSYSTEM!="usb_device", ACTION!="add", GOTO="AMIS_FPGA_rules_end"
+
+# AMIS PoC FPGA
+ATTRS{idVendor}=="05c0", ATTRS{idProduct}=="0002", MODE="0666"
+
+LABEL="AMIS_FPGA_rules_end"
