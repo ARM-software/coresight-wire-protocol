@@ -132,7 +132,7 @@ This starts the USB trace capture and write data to /path/to/trace.bin. The opti
 
 Arm Development Studio 2019.0 added support for debug and trace target connections using functional interfaces. A new debug and trace connection type can be added that uses the functional interface implemented in the libraries. The RDDI MEM-AP and RDDI Streaming Trace libraries should be shipped alongside a probe definition file (example at ds/probes.xml) and necessary config files to users of Arm Development Studio.
 
-Arm Development Studio User Guide: [Add a debug connection using functional interfaces](https://developer.arm.com/docs/101470/latest/platform-configuration/debug-hardware-configuration/add-a-debug-connection-using-functional-interfaces.html)
+Arm Development Studio User Guide: [Add a debug connection over functional I/O](https://developer.arm.com/docs/101470/latest/platform-configuration/debug-hardware-configuration/add-a-debug-connection-over-functional-io)
 
 
 ## Porting software to another system
