@@ -13,6 +13,7 @@
 
 #include "cswp_client.h"
 #include "cswp_usb_transport.h"
+#include "cswp_tcp_transport.h"
 
 #include <stdarg.h>
 
@@ -198,6 +199,11 @@ private:
     FILE* m_logFile;
 
     std::string m_cswpAddr;
+    std::string m_cswpTransportType;
+
+    // Only for TCP transport
+    std::string m_cswpIpAddr;
+    int m_cswpNetPort;
 
     std::vector<APInfo> m_aps;
 
@@ -209,6 +215,18 @@ private:
 
 namespace
 {
+    enum
+    {
+        TRANSPORT_TYPES_USB,
+        TRANSPORT_TYPES_TCP,
+        Num_TRANSPORT_TYPES
+    };
+
+    std::string TRANSPORT_TYPES_STRINGS[Num_TRANSPORT_TYPES] = {
+        "usb",
+        "tcp"
+    };
+
     size_t accessSizeBytes(MEM_AP_ACC_SIZE accSize)
     {
         switch (accSize)
@@ -279,6 +297,13 @@ MemAPImpl::MemAPImpl(RddiLogger& logger,
             apInfo.type = d->second.get<std::string>("<xmlattr>.type");
             m_aps.push_back(apInfo);
         }
+
+        m_cswpTransportType = boost::algorithm::to_lower_copy(config.get<std::string>("config.target.<xmlattr>.transport"));
+        if (TRANSPORT_TYPES_STRINGS[TRANSPORT_TYPES_TCP] == m_cswpTransportType)
+        {
+            m_cswpIpAddr = config.get<std::string>("config.target.<xmlattr>.ip");
+            m_cswpNetPort = config.get<int>("config.target.<xmlattr>.port");
+        }
     }
     catch (const std::exception& e)
     {
@@ -299,7 +324,11 @@ void MemAPImpl::GetSystemDescription(uint32* pDescriptionFormat, uint32* pDescri
 void MemAPImpl::MEM_AP_Connect(const char* clientInfo, char* targetInfo, size_t targetInfoLen)
 {
     // open CSWP connection
-    cswp_client_usb_transport_init(&m_cswpTransport, m_cswpAddr.c_str());
+    if (TRANSPORT_TYPES_STRINGS[TRANSPORT_TYPES_USB] ==  m_cswpTransportType)
+        cswp_client_usb_transport_init(&m_cswpTransport, m_cswpAddr.c_str());
+    else if (TRANSPORT_TYPES_STRINGS[TRANSPORT_TYPES_TCP] == m_cswpTransportType)
+        cswp_client_tcp_transport_init(&m_cswpTransport, m_cswpIpAddr.c_str(), m_cswpNetPort);
+
     int res = cswp_client_init(&m_cswpClient, &m_cswpTransport);
     if (res != CSWP_SUCCESS)
         throw RddiEx(RDDI_FAILED, "Failed to initialise CSWP client");
@@ -311,7 +340,7 @@ void MemAPImpl::MEM_AP_Connect(const char* clientInfo, char* targetInfo, size_t 
                     serverID, sizeof(serverID),
                     &serverVersion);
     if (res != CSWP_SUCCESS)
-        throw RddiEx(RDDI_FAILED, "Failed to initialise CSWP connection");
+        throw RddiEx(RDDI_FAILED, "Failed to initialise CSWP connection (" + std::string(m_cswpClient.errorMsg) + ")");
     printf("Connected to %s: version 0x%X, protocol version %d \n",
            serverID, serverVersion, serverProtocolVersion);
 

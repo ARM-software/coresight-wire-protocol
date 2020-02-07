@@ -3,7 +3,7 @@
 // This file is distributed under the University of Illinois Open Source
 // License. See LICENSE.TXT for details.
 
-#define _BSD_SOURCE /* for endian.h */
+#define _DEFAULT_SOURCE /* for endian.h */
 
 #include <endian.h>
 #include <errno.h>
@@ -17,9 +17,13 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <poll.h>
 #include <signal.h>
+#include <strings.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #include "linux/usb/functionfs.h"
 
@@ -29,6 +33,8 @@
 #include "cswp_server_impl.h"
 #include "cswp_buffer.h"
 
+#include "common_tcp.h"
+
 #define cpu_to_le16(x)  htole16(x)
 #define cpu_to_le32(x)  htole32(x)
 #define le32_to_cpu(x)  le32toh(x)
@@ -37,6 +43,20 @@
 #define BUFFER_SIZE 32768
 
 #define STR_INTERFACE_ "CSWP"
+
+#define PORT "8192"
+#define BACKLOG 1
+
+#define INVALID_FD (-1)
+
+// get sockaddr, IPv4 or IPv6:
+static void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET)
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
 
 /*
  * Setup USB descriptors
@@ -118,7 +138,7 @@ static void ep0_init(int fd)
 
     if (ret < 0) {
         fprintf(stderr, "Failed to write USB descriptors\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     const struct {
@@ -143,7 +163,7 @@ static void ep0_init(int fd)
     ret = write(fd, &strings, sizeof strings);
     if (ret < 0) {
         fprintf(stderr, "Failed to write USB strings\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -155,13 +175,15 @@ typedef struct
     int active;
     int outFd;
     int inFd;
+    ssize_t (*read_msg)(int fd, void* buf, size_t sz);
+    ssize_t (*write_msg)(int fd, void* buf, ssize_t sz);
     pthread_t cmdThreadId;
 } server_state_t;
 
 server_state_t gServerState = {
     .active = 0,
-    .outFd = -1,
-    .inFd = -1,
+    .outFd = INVALID_FD,
+    .inFd = INVALID_FD,
 };
 
 static void hex_dump(const uint8_t* buf, size_t sz)
@@ -184,42 +206,66 @@ static void hex_dump(const uint8_t* buf, size_t sz)
         vlog(V_TRACE, "%02X\n", *buf++);
 }
 
-/*
- * Command processing thread
- *
- * Read commands from OUT endpoint and send responses on IN endpoint
- */
-static void* command_thread(void* arg)
+static ssize_t write_msg_usb(int fd, void* buf, ssize_t sz)
 {
-    server_state_t* state = (server_state_t*)arg;
+    ssize_t bytesSent = 0;
+    const uint8_t* pWrite = buf;
+    while (sz - bytesSent > 0)
+    {
+        ssize_t bytesWritten = write(fd, pWrite, sz-bytesSent);
+        if (bytesWritten <= 0)
+        {
+            int err = errno;
+            fprintf(stderr, "Error writing to USB IN endpoint: %lu\n", bytesWritten);
+            return -1;
+        }
 
+        pWrite += bytesWritten;
+        bytesSent += bytesWritten;
+    }
+
+    return bytesSent;
+}
+
+static int process_commands(server_state_t* state)
+{
     CSWP_BUFFER* cmd = cswp_buffer_alloc(BUFFER_SIZE);
     CSWP_BUFFER* rsp = cswp_buffer_alloc(BUFFER_SIZE);
 
-    cswp_server_state_t cswpServer;
+    cswp_server_state_t cswpServer = {0};
 
     cswpServer.impl = &cswpServerImpl;
 
     vlog(V_INFO, "Command thread start\n");
 
-    while (state->active) {
+    while (state->active)
+    {
         cswp_buffer_clear(cmd);
 
         /* Read command size from bulk OUT endpoint */
         vlog(V_DEBUG, "Waiting for command\n");
-        ssize_t bytesRead = read(state->outFd, cmd->buf, cmd->size);
+
+        ssize_t bytesRead = state->read_msg(state->outFd, cmd->buf, cmd->size);
         vlog(V_DEBUG, "Read %lu\n", bytesRead);
-        if (bytesRead <= 0) {
-            switch (errno) {
+        if (bytesRead == -1)
+        {
+            switch (errno)
+            {
             case ESHUTDOWN:
-                /* endpoint has shutdown - e.g. disconnected, go back and wait */
+                /* USB endpoint has shutdown - e.g. disconnected, go back and wait */
                 /* for next command */
                 continue;
 
             default:
-                fprintf(stderr, "Error reading: %d\n", errno);
+                fprintf(stderr, "Error reading data from client: %d: %s\n", errno, strerror(errno));
                 break;
             }
+        }
+        else if (bytesRead == 0)
+        {
+            /* Client closed connection and read was cancelled, 0 bytes were read */
+            /* No error occurred during read */
+            vlog(V_INFO, "Read 0 bytes, will try to accept new connection\n");
             break;
         }
 
@@ -233,7 +279,7 @@ static void* command_thread(void* arg)
         vlog(V_DEBUG, "Command size: %lu\n", cmd->used);
         if (cmdSize != cmd->used)
         {
-            fprintf(stderr, "Warning! expected %u bytes, but USB packet contains %lu\n", cmdSize, cmd->used);
+            fprintf(stderr, "Warning! expected %u bytes, but read buffer contains %lu\n", cmdSize, cmd->used);
         }
 
         /* Get the rest of the header */
@@ -279,17 +325,10 @@ static void* command_thread(void* arg)
         hex_dump(rsp->buf, rsp->used);
 
         /* Send response */
-        ssize_t bytesSent = 0;
-        const uint8_t* pWrite = rsp->buf;
-        while (rsp->used-bytesSent > 0) {
-            ssize_t bytesWritten = write(state->inFd, pWrite, rsp->used-bytesSent);
-            if (bytesWritten <= 0) {
-                fprintf(stderr, "Error writing to USB IN endpoint: %lu\n", bytesWritten);
-                break;
-            }
-
-            pWrite += bytesWritten;
-            bytesSent += bytesWritten;
+        if (state->write_msg(state->inFd, rsp->buf, rsp->used) == -1)
+        {
+            fprintf(stderr, "write(%d): %s", errno, strerror(errno));
+            break;
         }
     }
 
@@ -301,12 +340,24 @@ static void* command_thread(void* arg)
     vlog(V_INFO, "Command thread exit\n");
     fflush(stdout);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-static void start_command_thread()
+/*
+ * Command processing thread
+ *
+ * Read commands from OUT endpoint and send responses on IN endpoint
+ */
+static void* command_thread(void* arg)
 {
-    if (gServerState.active == 0) {
+    server_state_t* state = (server_state_t*)arg;
+    return process_commands(state);
+}
+
+static void start_command_thread(void)
+{
+    if (gServerState.active == 0)
+    {
         /* Open bulk EPs */
         gServerState.outFd = open("ep1", O_RDWR);
         if (gServerState.outFd < 0) {
@@ -315,14 +366,19 @@ static void start_command_thread()
         }
 
         gServerState.inFd = open("ep2", O_RDWR);
-        if (gServerState.inFd < 0) {
+        if (gServerState.inFd < 0)
+        {
             fprintf(stderr, "Failed to open ep2\n");
             exit(1);
         }
 
+        gServerState.read_msg = read;
+        gServerState.write_msg = write_msg_usb;
+
         gServerState.active = 1;
 
-        if (pthread_create(&gServerState.cmdThreadId, NULL, command_thread, &gServerState) != 0) {
+        if (pthread_create(&gServerState.cmdThreadId, NULL, command_thread, &gServerState) != 0)
+        {
             fprintf(stderr, "Failed to start command thread\n");
             exit(1);
         }
@@ -331,7 +387,7 @@ static void start_command_thread()
     }
 }
 
-static void stop_command_thread()
+static void stop_command_thread(void)
 {
     vlog(V_DEBUG, "Command thread stop\n");
 
@@ -416,12 +472,76 @@ static void ep0_handle(int fd)
     }
 }
 
+static int tcp_init(void)
+{
+    struct addrinfo hints = {0}, *res = 0;
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    int err = getaddrinfo(NULL, PORT, &hints, &res);
+    if (err)
+    {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(err));
+        return INVALID_FD;
+    }
+
+    int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (sockfd == INVALID_FD)
+    {
+        err = errno;
+        fprintf(stderr, "socket errno=%d: %s\n", err, strerror(err));
+        goto handle_err_clean_all;
+    }
+
+    int yes = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
+    {
+        err = errno;
+        fprintf(stderr, "setsockopt errno=%d: %s\n", err, strerror(err));
+        goto handle_err_clean_all;
+    }
+
+    if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1)
+    {
+        err = errno;
+        fprintf(stderr, "bind errno=%d: %s\n", err, strerror(err));
+        goto handle_err_clean_all;
+    }
+
+    freeaddrinfo(res);
+
+    if (listen(sockfd, BACKLOG) == -1)
+    {
+        err = errno;
+        fprintf(stderr, "listen errno=%d: %s\n", err, strerror(err));
+        goto handle_err_clean_socket;
+    }
+
+    return sockfd;
+
+handle_err_clean_all:
+    freeaddrinfo(res);
+
+handle_err_clean_socket:
+    if (sockfd != INVALID_FD)
+        close(sockfd);
+
+    return INVALID_FD;
+}
 
 int main(int argc, char **argv)
 {
+    /*
+     * We need to ignore SIGPIPE for the sockets because this is generated for client shutdown
+     * when in a write() calls and is default handled by shutting down the application.
+     */
+    signal(SIGPIPE, SIG_IGN);
+
     int ep0Fd;
     int a;
     const char* logFile = 0;
+    const char* transport = "";
 
     int verbose = 0;
 
@@ -437,25 +557,92 @@ int main(int argc, char **argv)
             logFile = argv[a+1];
             ++a;
         }
+        else if (strcmp("--transport", argv[a]) == 0 &&
+                 a < argc-1)
+        {
+            transport = argv[a+1];
+            ++a;
+        }
     }
 
     setup_logging(verbose, logFile);
 
-    vlog(V_INFO, "CSWP USB server\n");
+    vlog(V_INFO, "CSWP %s server\n", transport);
 
-    /* Open EP0 and configure */
-    ep0Fd = open("ep0", O_RDWR);
-    if (ep0Fd < 0) {
-        fprintf(stderr, "Failed to open ep0\n");
-        exit(1);
+    if (strcasecmp(transport, "usb") == 0)
+    {
+        /* Open EP0 and configure */
+        ep0Fd = open("ep0", O_RDWR);
+        if (ep0Fd < 0)
+        {
+            fprintf(stderr, "Failed to open ep0\n");
+            exit(EXIT_FAILURE);
+        }
+        ep0_init(ep0Fd);
+
+        /* Read events from EP0 */
+        /* Other EPs will be handled by threads (select/poll doesn't seem to
+         * work, preventing a single threaded implementation) */
+        while (1)
+            ep0_handle(ep0Fd);
+
     }
-    ep0_init(ep0Fd);
+    else if (strcasecmp(transport, "tcp") == 0)
+    {
+        int sockfd = tcp_init();
+        if (sockfd == INVALID_FD)
+        {
+            fprintf(stderr, "Failed to open TCP socket\n");
+            exit(EXIT_FAILURE);
+        }
 
-    /* Read events from EP0 */
-    /* Other EPs will be handled by threads (select/poll doesn't seem to
-     * work, preventing a single threaded implementation) */
-    while (1) {
-        ep0_handle(ep0Fd);
+        struct sockaddr_storage theirs = {0};
+        while (1)
+        {
+            vlog(V_DEBUG, "Waiting for connections...\n");
+
+            socklen_t sinSz = sizeof(theirs);
+            int newfd = accept(sockfd, &theirs, &sinSz);
+            if (newfd == INVALID_FD)
+            {
+                int err = errno;
+                if (err == ETIMEDOUT)
+                {
+                    vlog(V_INFO, "Timeout during accept, will retry\n");
+                }
+                else
+                {
+                    fprintf("accept errno=%d: %s\n", err, strerror(err));
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            char s[INET_ADDRSTRLEN] = {0};
+            inet_ntop(theirs.ss_family, get_in_addr(&theirs), s, sizeof(s));
+            vlog(V_INFO, "Got connection from %s\n", s);
+
+            if (gServerState.active == 0)
+            {
+                gServerState.outFd = newfd;
+                gServerState.inFd = newfd;
+                gServerState.read_msg = cswp_read_msg_tcp;
+                gServerState.write_msg = cswp_write_msg_tcp;
+            }
+
+            gServerState.active = 1;
+
+            process_commands(&gServerState);
+
+            close(newfd);
+            gServerState.active = 0;
+            gServerState.inFd = gServerState.outFd = INVALID_FD;
+        }
+
+        close(sockfd);
+    }
+    else
+    {
+        vlog(V_INFO, "Unrecognized transport\n");
     }
 
     vlog(V_INFO, "Exiting\n");

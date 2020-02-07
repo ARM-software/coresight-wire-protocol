@@ -36,7 +36,7 @@ gadget_setup() {
   echo $STR_PRODUCT > strings/0x409/product
   echo $STR_SERIAL > strings/0x409/serialnumber
 
-  # create trace function
+  echo "Creating trace functions"
   mkdir -p functions/coresight_trace.1
   echo 1 > functions/coresight_trace.1/n_streams
   mkdir -p functions/coresight_trace.1/tmc.0
@@ -45,7 +45,7 @@ gadget_setup() {
   # create cswp function
   mkdir functions/ffs.cswp
 
-  # start CSWP server
+  echo "Starting CSWP server"
   [ -d /dev/ffs-cswp ] || mkdir /dev/ffs-cswp
   mount -t functionfs cswp /dev/ffs-cswp
   /cswp_server /dev/ffs-cswp --logfile /tmp/cswp.log $CSWP_ARGS &
@@ -55,16 +55,9 @@ gadget_setup() {
   echo "CoreSight Trace" >  configs/c.1/strings/0x409/configuration
   ln -s functions/coresight_trace.1/ configs/c.1/
   ln -s functions/ffs.cswp/ configs/c.1/
-
-  # bind to USB device - driver specific
-  # echo "40000000.usb" > $G0/UDC
 }
 
 gadget_teardown() {
-
-  # unbind USB device  - driver specific
-  # echo "" > $G0/UDC || true
-
   # kill cswp server
   SERVER_PID=$(pidof /cswp_server || true)
   if [ "$SERVER_PID" ]; then
@@ -89,6 +82,8 @@ gadget_teardown() {
 
   rmmod cusbWrapperDrv
   rmmod cusbCoreDrv
+
+  umount /sys/kernel/config
 }
 
 case $1 in

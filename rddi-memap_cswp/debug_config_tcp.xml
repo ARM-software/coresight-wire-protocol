@@ -1,5 +1,5 @@
 <config>
-    <target type="amis" usbid="05c0:0002" address="AMIS0001"/>
+    <target type="amis" transport="tcp" ip="1.2.3.4" port="1234" address="AMIS0001"/>
     <memaps>
         <ap address="0x30000000" type="mem-ap.v2"/>
     </memaps>

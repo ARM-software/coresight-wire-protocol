@@ -1,4 +1,3 @@
-
 # CoreSight Wire Protocol
 
 The CoreSight Wire Protocol repository provides example implementations of the software components required to enable debug and trace over functional interfaces for a CoreSight [SoC-600](https://developer.arm.com/ip-products/system-ip/coresight-debug-and-trace/coresight-components/coresight-soc-600) target. Including:
@@ -15,7 +14,8 @@ The repository is structured as follows:
     These libraries implement the client interface for CSWP.
   * doc: CSWP documentation
   * usb_transport: USB client transport
-    These libraries implement a client transport for CSWP over USB.
+  * tcp_transport: TCP client transport
+    These libraries implement a client transport for CSWP over USB and TCP.
   * server: Server libraries
     These libraries implement the server interface for CSWP.
 
@@ -24,21 +24,26 @@ The repository is structured as follows:
 * rddi: RDDI header files
 
 * rddi-memap_cswp: RDDI MEM-AP library
-  Implements the RDDI MEM-AP to interface with the debugger and uses CSWP client libraries to communicate with the CSWP server.
-  * py_test: Simple python RDDI MEM-AP integration app.
+  Implements the RDDI MEM-AP to interface with the debugger and uses CSWP client libraries to communicate with the CSWP server. It also contains sample debug config XML files for USB and TCP (e.g. this is where the IP address and network port are configured). These need to be specified inside ds/probes.xml, and are subsequently parsed by the rddi-memap_cswp implementation (see env.cpp).
+   * py_test: Simple python RDDI MEM-AP integration app.
+   * debug_config_usb.xml: Debug connection configuration file for USB (USB vendor and product ID)
+   * debug_config_tcp.xml: Debug connection configuration file for TCP (IP address and TCP port)
 
-* rddi_streaming_trace: RDDI Streaming Trace library
+* rddi_streaming_trace: RDDI Streaming Trace library (USB only)
   Implements the RDDI Streaming Trace to interface with the debugger and uses USB commands to communicate with the Linux kernel ETR streaming trace drivers.
   * streaming_trace_capture: An example application that uses the RDDI Streaming Trace interface to capture and store trace data.
 
 * target
   * cswp_server: Linux based example server for the CSWP protocol.
-  Uses USB FunctionFS to send and receive data and the cswp/server library is used to process the received commands. Implements access to the kernel CoreSight devices and system memory.
+  Uses USB FunctionFS, or TCP Berkeley sockets, to send and receive data. The cswp/server library is used to process the received commands. The example implements access to the kernel CoreSight devices and system memory.
 
 * drivers: Linux and Windows drivers for the example USB interfaces.
 
 * usb_client: USB abstraction library with Windows and Linux implementations.
   This provides tools such as rddi_streaming_trace and rddi-memap_cswp with a platform neutral interface to USB devices.
+
+* tcp_client: TCP abstraction library with Windows and Linux implementations.
+  This provides tools such as rddi-memap_cswp with a platform neutral interface to TCP devices.
 
 
 ## Build
@@ -53,6 +58,9 @@ A 64-bit Windows or Linux platform is required to build these tools.
 * libusb-1.0
 * [Boost 1.64](https://www.boost.org/users/history/)
 * [cmake 3.8 or later](https://cmake.org/download/)
+* [fff 1.0](https://github.com/meekrosoft/fff) (used for tests, downloaded automatically from github during build)
+* [greatest 1.4.2](https://github.com/silentbicycle/greatest) (used for tests, downloaded automatically from github during build)
+* [doctest 2.3.5](https://github.com/onqtam/doctest) (used for tests, downloaded automatically from github during build)
 
 The example CSWP server is also built on Linux which requires an aarch64-linux-gnu cross compiler (For example, [gcc-arm-8.3-2019.03-x86_64-aarch64-linux-gnu](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-a/downloads)). Must be on the PATH.
 
@@ -74,6 +82,9 @@ The script uses *cmake* to create *Makefiles*, then run *make* to build the bina
 * [Windows Driver Kit 8.1](https://www.microsoft.com/en-gb/download/details.aspx?id=42273)
 * [Boost 1.64](https://www.boost.org/users/history/) ([prebuilt windows](https://sourceforge.net/projects/boost/files/boost-binaries/) binaries are available)
 * [cmake 3.8 or later](https://cmake.org/download/)
+* [fff 1.0](https://github.com/meekrosoft/fff) (used for tests, downloaded automatically from github during build)
+* [greatest 1.4.2](https://github.com/silentbicycle/greatest) (used for tests, downloaded automatically from github during build)
+* [doctest 2.3.5](https://github.com/onqtam/doctest) (used for tests, downloaded automatically from github during build)
 
 #### Building
 
@@ -94,6 +105,8 @@ Once the server executable and script are copied over to the target root file sy
 
 and cleaned up with:
 `/gadget_setup stop`
+
+The functional I/O interface (USB or TCP) for the CSWP server can be specified with the `CSWP_ARGS` environment variable. Set the `--transport` flag to `usb` or `tcp`, for example `CSWP_ARGS="--transport usb" /gadget_setup`
 
 To enable the optional `cswp_get_system_description()` call (target hosted SDF), also copy the target/sdf to the target root file system.
 
@@ -142,7 +155,8 @@ Arm Development Studio User Guide: [Add a debug connection over functional I/O](
 #### Debug
 
 Both rddi-memap_cswp and cswp/client are generic.
-cswp/usb_transport is the layer in charge of the USB communication on the host side. It must be rewritten when another transport layer is used.
+cswp/usb_transport and cswp/tcp_transport are the layers in charge of the USB or TCP communication on the host side. If another another transport layer is used they must be rewritten.
+cswp/tcp_transport is the layer in charge of the TCP communication on the host side. It must be rewritten when another transport layer is used.
 
 #### Trace
 
@@ -159,7 +173,7 @@ The target-side components in these examples are all Linux-based applications an
 
 CSWP server contains 2 layers:
 * target agnostic code in cswp/server. This code deals with CSWP protocol. It uses function pointers to get information from the target-specific layer. It can be reused as it is.
-* target specific code in target/cswp_server. This code uses Linux-specific mechanism to access SoC components. It must be rewritten for another system.
+* target specific code in target/cswp_server. This code uses Linux-specific mechanism to access SoC components. It currently supports either USB or TCP as the transport layer. It must be rewritten for another system if not Linux based or another transport layer is used. 
 
 #### Trace
 

@@ -1,10 +1,10 @@
 CROSS_COMPILE ?= 	aarch64-linux-gnu-
 CC			:= $(CROSS_COMPILE)gcc
-CFLAGS			:= -g -O2 -Wall
-INCLUDE                 := -I../../cswp -I../../cswp/server
-VPATH			:= ../../cswp ../../cswp/server
+CFLAGS			:= -Os -Wall
+INCLUDE                 := -I../../cswp -I../../cswp/server -I../../common_tcp
+VPATH			:= ../../cswp ../../common_tcp ../../cswp/server
 
-OBJECTS := cswp_server.o cswp_impl.o cswp_server_cmdint.o cswp_server_commands.o cswp_server_impl.o cswp_buffer.o
+OBJECTS := common_tcp.o cswp_server.o cswp_impl.o cswp_server_cmdint.o cswp_server_commands.o cswp_server_impl.o cswp_buffer.o
 
 all: build/cswp_server
 

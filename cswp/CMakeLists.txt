@@ -10,6 +10,7 @@ set_property(TARGET cswp_common PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_subdirectory(server)
 add_subdirectory(client)
 add_subdirectory(usb_transport)
+add_subdirectory(tcp_transport)
 add_subdirectory(tests)
 
 if(BUILD_DOCUMENTATION)

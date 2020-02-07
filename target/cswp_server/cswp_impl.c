@@ -217,7 +217,7 @@ static int cswp_server_impl_init(cswp_server_state_t* state)
 {
     int numEntries, numDevices;
     struct dirent **entries;
-    cswp_server_priv_t* priv;
+    cswp_server_priv_t* priv = {0};
     int i;
 
     /* Build device list */
@@ -293,7 +293,7 @@ static int cswp_server_impl_term(cswp_server_state_t* state)
     cswp_server_impl_clear_devices(state);
 
     priv = (cswp_server_priv_t*)state->priv;
-    if (priv->lastPollData)
+    if (priv && priv->lastPollData)
         free(priv->lastPollData);
     free(priv);
     state->priv = NULL;
