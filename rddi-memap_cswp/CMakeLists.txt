@@ -7,6 +7,7 @@ include_directories(    ./
                         ${RDDI_INCLUDE_DIR}
                         ../cswp
                         ../cswp/client
+                        ../cswp/tcp_transport
                         ../cswp/usb_transport
                         ${Boost_INCLUDE_DIRS}                        
                         )
@@ -27,8 +28,12 @@ add_library(${LIBNAME} SHARED ${src})
 
 # add library dependencies
 target_link_libraries(${LIBNAME} PRIVATE
-  cswp_client cswp_common cswp_usb_transport usb_client ${PLAT_USB_LIBS}
+  cswp_client cswp_common cswp_usb_transport cswp_tcp_transport usb_client tcp_client ${PLAT_USB_LIBS}
   ${Boost_LIBRARIES} ${CMAKE_DL_LIBS} )
+
+if(WIN32)
+  target_link_libraries(${LIBNAME} PRIVATE "ws2_32.lib")
+endif()
 
 # apply common flags for RDDI implementations
 rddi_library_properties(${LIBNAME})
@@ -45,5 +50,5 @@ else()
     DESTINATION rddi_mem-ap)
 endif()
 install(
-  FILES ${CMAKE_CURRENT_SOURCE_DIR}/debug_config.xml
+  FILES ${CMAKE_CURRENT_SOURCE_DIR}/debug_config_usb.xml ${CMAKE_CURRENT_SOURCE_DIR}/debug_config_tcp.xml
   DESTINATION rddi_mem-ap)
