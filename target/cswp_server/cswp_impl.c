@@ -476,11 +476,13 @@ static int cswp_server_impl_device_discover_regs(cswp_server_state_t* state, uns
 
 static int cswp_server_impl_device_open(cswp_server_state_t* state, unsigned deviceIndex)
 {
-    cswp_device_info_t* devInfo = &state->deviceInfo[deviceIndex];
-
     /* No registers */
+    cswp_device_info_t* devInfo = &state->deviceInfo[deviceIndex];
     devInfo->registerCount = 0;
     devInfo->registerInfo = NULL;
+
+    cswp_server_priv_t *priv = state->priv;
+    priv->devicePriv[deviceIndex].regsDiscovered = 0;
 
     return CSWP_SUCCESS;
 }
