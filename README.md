@@ -1,6 +1,6 @@
 # CoreSight Wire Protocol
 
-The CoreSight Wire Protocol repository provides example implementations of the software components required to enable debug and trace over functional interfaces for a CoreSight [SoC-600](https://developer.arm.com/ip-products/system-ip/coresight-debug-and-trace/coresight-components/coresight-soc-600) target. Including:
+The CoreSight Wire Protocol repository provides example implementations of the software components required to [enable debug and trace over functional interfaces](https://github.com/ARM-software/coresight-wire-protocol/wiki) for a CoreSight [SoC-600](https://developer.arm.com/ip-products/system-ip/coresight-debug-and-trace/coresight-components/coresight-soc-600) target. Including:
  * Reference CoreSight Wire Protocol (CSWP) handlers.
  * Example debug and trace interface implementations.
    * RDDI MEM-AP library - debug interface to the debugger.
