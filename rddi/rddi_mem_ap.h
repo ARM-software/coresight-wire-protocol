@@ -89,29 +89,48 @@ typedef enum {
     MEM_AP_ACC_64  //!< 64-bit access
 } MEM_AP_ACC_SIZE;
 
+/**
+ * Register access RegID flags
+ *
+ * Encoding for register access RegID as register banks on MEM-APs can have
+ * difference base offsets according to the Debug Interface version.
+ */
+/** Set to use the Control register bank base (ADIv6 - 0xD00) */
+#define MEMAP_REG_CTRL                0x1000
+/** Set to use the Banked Data register bank base (ADIv6 - 0xD10) */
+#define MEMAP_REG_BANKED_DATA         0x2000
+/** Set to use the ID register bank base (ADIv6 - 0xDF0) */
+#define MEMAP_REG_ID                  0x4000
+/** Use the Control register bank base with offset x */
+#define MEMAP_REG_CTRL_BASE(x)        (MEMAP_REG_CTRL | (x & 0xF))
+/** Use the Banked Data register bank base with offset x */
+#define MEMAP_REG_BANKED_DATA_BASE(x) (MEMAP_REG_BANKED_DATA | (x & 0xF))
+/** Use the ID register bank base with offset x */
+#define MEMAP_REG_ID_BASE(x)          (MEMAP_REG_ID | (x & 0xF))
+
 /*
  * Flags for memory access commands
  *
- * bits 7:0 implementation defined
+ * bits 6:0 implementation defined
  */
 /** Set to override MEM-AP.CSW INCR bits */
-#define MEM_AP_OVERRIDE_INCR (1 << 8)
+#define MEM_AP_OVERRIDE_INCR (1 << 7)
 /** Set to override MEM-AP.CSW PROT bits */
-#define MEM_AP_OVERRIDE_PROT (1 << 9)
+#define MEM_AP_OVERRIDE_PROT (1 << 8)
 /** Set to override MEM-AP.CSW MODE bits */
-#define MEM_AP_OVERRIDE_MODE (1 << 10)
+#define MEM_AP_OVERRIDE_MODE (1 << 9)
 /** Set to override MEM-AP.CSW TYPE bits */
-#define MEM_AP_OVERRIDE_TYPE (1 << 11)
+#define MEM_AP_OVERRIDE_TYPE (1 << 10)
 /** Set to override MEM-AP.CSW ERR bits */
-#define MEM_AP_OVERRIDE_ERR  (1 << 12)
+#define MEM_AP_OVERRIDE_ERR  (1 << 11)
 /** Offset of MEM-AP.CSW INCR value */
-#define MEM_AP_INCR_SHIFT    13
+#define MEM_AP_INCR_SHIFT    12
 /** Mask for MEM-AP.CSW INCR value */
 #define MEM_AP_INCR          ( 0x3 << MEM_AP_INCR_SHIFT)
 /** Offset of MEM-AP.CSW PROT value */
-#define MEM_AP_PROT_SHIFT    15
+#define MEM_AP_PROT_SHIFT    14
 /** Mask for MEM-AP.CSW PROT value */
-#define MEM_AP_PROT          (0x7F << MEM_AP_PROT_SHIFT)
+#define MEM_AP_PROT          (0xFF << MEM_AP_PROT_SHIFT)
 /** Offset of MEM-AP.CSW MODE value */
 #define MEM_AP_MODE_SHIFT    22
 /** Mask for MEM-AP.CSW MODE value */

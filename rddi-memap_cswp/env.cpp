@@ -268,6 +268,18 @@ namespace
 
         return cswpFlags;
     }
+
+    // ADIv6 only
+    unsigned decodeRegId(unsigned regId)
+    {
+        if (regId & MEMAP_REG_CTRL)
+            return 0xD00 | (regId & 0xF);
+        else if (regId & MEMAP_REG_BANKED_DATA)
+            return 0xD10 | (regId & 0xF);
+        else if (regId & MEMAP_REG_CTRL)
+            return 0xDF0 | (regId & 0xF);
+        return regId & 0xFFF;
+    }
 }
 
 MemAPImpl::MemAPImpl(RddiLogger& logger,
@@ -429,7 +441,7 @@ void MemAPImpl::MEM_AP_ReadReg(int apNumber, int regID, uint32 *pValue)
 
     APInfo& apInfo = getAP(apNumber);
 
-    unsigned regIDs = regID;
+    unsigned regIDs = decodeRegId(regID);
     int res = cswp_device_reg_read(&m_cswpClient, apNumber, 1, &regIDs, pValue, 1);
     if (res != CSWP_SUCCESS)
         throw RddiEx(RDDI_FAILED, "Failed to read CSWP register");
@@ -443,7 +455,7 @@ void MemAPImpl::MEM_AP_WriteReg(int apNumber, int regID, uint32 value)
 
     APInfo& apInfo = getAP(apNumber);
 
-    unsigned regIDs = regID;
+    unsigned regIDs = decodeRegId(regID);
     int res = cswp_device_reg_write(&m_cswpClient, apNumber, 1, &regIDs, &value, 1);
     if (res != CSWP_SUCCESS)
         throw RddiEx(RDDI_FAILED, "Failed to write CSWP register");
