@@ -5,7 +5,7 @@ enable_testing()
 
 # use static libstdc++
 if ( CMAKE_COMPILER_IS_GNUCC )
-  set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libstdc++ ${CMAKE_CSS_STANDARD_LIBRARIES}")
+  set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libstdc++ ${CMAKE_CXX_STANDARD_LIBRARIES}")
 endif ( CMAKE_COMPILER_IS_GNUCC )
 
 # enable docs build
