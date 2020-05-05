@@ -13,6 +13,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
+#include <setjmp.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -22,6 +24,11 @@
 
 static FILE* logFile;
 static int verbose;
+
+// SIGBUS handling
+volatile sig_atomic_t sigbusValid = 0;
+sigjmp_buf sigbusJmp;
+
 #define V_ERR 0
 #define V_INFO 1
 #define V_DEBUG 2
@@ -65,6 +72,21 @@ void vlog(int level, const char* msg, ...)
         fflush(logFile);
         va_end(args);
     }
+}
+
+void sigbus_handler(int signum)
+{
+    if (sigbusValid)
+        siglongjmp(sigbusJmp, 1);
+
+    // Restore default and re-raise
+    struct sigaction sa;
+    sa.sa_flags = SA_NODEFER;
+    sa.sa_handler = SIG_DFL;
+    sigfillset(&(sa.sa_mask));
+    sigaction(SIGBUS, &sa, NULL);
+
+    raise(signum);
 }
 
 typedef struct
@@ -279,6 +301,13 @@ static int cswp_server_impl_init(cswp_server_state_t* state)
     free(entries);
 
     priv->lastPollDataSize = 0;
+
+    // SIGBUS handler
+    struct sigaction sa;
+    sa.sa_flags = SA_NODEFER;
+    sa.sa_handler = sigbus_handler;
+    sigfillset(&(sa.sa_mask));
+    sigaction(SIGBUS, &sa, NULL);
 
     return CSWP_SUCCESS;
 }
@@ -699,7 +728,16 @@ static int do_32bit_read(int fd, uint64_t address, uint32_t* value)
         perror("mmap failed: ");
         return CSWP_MEM_FAILED;
     }
-    res = copy_32((uint8_t*)value, addr + (address - pageAddr), size);
+
+    if (sigsetjmp(sigbusJmp, 1) == 0)
+    {
+        sigbusValid = 1;
+        res = copy_32((uint8_t*)value, addr + (address - pageAddr), size);
+    }
+    else
+        res = CSWP_MEM_FAILED;
+    sigbusValid = 0;
+
     munmap(addr, pageSize * pages);
     return res;
 }
@@ -730,7 +768,16 @@ static int do_32bit_write(int fd, uint64_t address, uint32_t value)
       perror("mmap failed: ");
       return CSWP_MEM_FAILED;
     }
-    res = copy_32(addr + (address - pageAddr), (uint8_t*)(&value), size);
+
+    if (sigsetjmp(sigbusJmp, 1) == 0)
+    {
+        sigbusValid = 1;
+        res = copy_32(addr + (address - pageAddr), (uint8_t*)(&value), size);
+    }
+    else
+        res = CSWP_MEM_FAILED;
+    sigbusValid = 0;
+
     munmap(addr, pageSize * pages);
     return res;
 }
