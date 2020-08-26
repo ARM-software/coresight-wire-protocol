@@ -66,6 +66,9 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 endif()
 set(Boost_REALPATH 1)
 set(Boost_USE_STATIC_LIBS ON)
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW) # find_package() uses <PackageName>_ROOT variables
+endif()
 find_package(Boost COMPONENTS thread system chrono REQUIRED)
 
 # find RDDI headers
