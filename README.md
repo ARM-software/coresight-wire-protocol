@@ -79,12 +79,12 @@ The script uses *cmake* to create *Makefiles*, then run *make* to build the bina
 #### Requirements
 
 * Visual Studio 2015
-* [Windows Driver Kit 8.1](https://www.microsoft.com/en-gb/download/details.aspx?id=42273)
-* [Boost 1.64](https://www.boost.org/users/history/) ([prebuilt windows](https://sourceforge.net/projects/boost/files/boost-binaries/) binaries are available)
+* [Windows Driver Kit 10 for Visual Studio 2015](https://docs.microsoft.com/en-us/windows-hardware/drivers/other-wdk-downloads)
+* [Boost 1.64](https://www.boost.org/users/history/) ([prebuilt Windows](https://sourceforge.net/projects/boost/files/boost-binaries/) binaries are available)
 * [cmake 3.8 or later](https://cmake.org/download/)
-* [fff 1.0](https://github.com/meekrosoft/fff) (used for tests, downloaded automatically from github during build)
-* [greatest 1.4.2](https://github.com/silentbicycle/greatest) (used for tests, downloaded automatically from github during build)
-* [doctest 2.3.5](https://github.com/onqtam/doctest) (used for tests, downloaded automatically from github during build)
+* [fff 1.0](https://github.com/meekrosoft/fff) (used for tests, downloaded automatically from GitHub during build)
+* [greatest 1.4.2](https://github.com/silentbicycle/greatest) (used for tests, downloaded automatically from GitHub during build)
+* [doctest 2.3.5](https://github.com/onqtam/doctest) (used for tests, downloaded automatically from GitHub during build)
 
 #### Building
 
@@ -93,7 +93,7 @@ Boost 1.64 is required. Set the BOOST_ROOT environment variable to point to Boos
 Open a command prompt (e.g. Visual studio 2015 command prompt) in this directory. PATH must contain cmake and visual studio. Run:
 `build.bat Debug`
 
-This generates Visual Studio projects. Open in Visual Studio and build, the build the INSTALL target. This copies the binaries and necessary files to run the tools to:
+This generates Visual Studio projects. Open in Visual Studio and build the INSTALL target. This copies the binaries and necessary files to run the tools to:
 `build/win_32-x86_64/dbg/dist/`
 
 ## CSWP server example
