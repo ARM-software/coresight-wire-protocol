@@ -1,1 +1,4 @@
 /build/
+/*/tests/fff.h
+/*/tests/greatest.h
+/*/tests/doctest.h
