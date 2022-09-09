@@ -186,7 +186,7 @@ RDDI int MEM_AP_WriteRepeat(RDDIHandle handle, int apNumber, uint64 addr, MEM_AP
     return LastErrorCode();
 }
 
-RDDI int MEM_AP_WriteValueRepeat(RDDIHandle handle, int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint32 val)
+RDDI int MEM_AP_WriteValueRepeat(RDDIHandle handle, int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint64 val)
 {
     TRAP_EXCEPTIONS(EnvironmentMap::Lookup(handle)->MEM_AP_WriteValueRepeat(apNumber, addr, accSize, flags, repeatCount, val));
     return LastErrorCode();
