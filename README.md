@@ -128,9 +128,7 @@ To enable the optional `cswp_get_system_description()` call (target hosted SDF),
 
 ### ETR Streaming Trace drivers
 
-The Linux kernel ETR streaming trace drivers used for the RDDI Streaming Trace implementation are based on Linux-4.9. They are yet to be forward ported and up-streamed to the main Linux source.
-
-A non-supported patch set for Linux-4.9 may be provided on [request](mailto:support-software@arm.com).
+An ETR driver is needed to implement streaming trace functionality via some Functional I/O mechanism, such as USB or Ethernet. The implementation details depend on the platform, operating system and transport. Please contact [Arm support](mailto:support-software@arm.com) should additional guidance be required.
 
 ### Streaming trace capture
 
