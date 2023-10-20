@@ -357,7 +357,7 @@ RDDI int MEM_AP_WriteRepeat(RDDIHandle handle, int apNumber, uint64 addr, MEM_AP
  * @param[out] val The value to write
  * @return RDDI_SUCCESS on success, otherwise RDDI_xxxx on error
  */
-RDDI int MEM_AP_WriteValueRepeat(RDDIHandle handle, int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint32 val);
+RDDI int MEM_AP_WriteValueRepeat(RDDIHandle handle, int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint64 val);
 
 /**
  * Fill a block of memory on a MEM-AP
