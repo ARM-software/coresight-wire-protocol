@@ -49,7 +49,7 @@ public:
     virtual void MEM_AP_ReadRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, void* buf) = 0;
     virtual void MEM_AP_Write(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned size, const void* buf) = 0;
     virtual void MEM_AP_WriteRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, const void* buf) = 0;
-    virtual void MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint32 val) = 0;
+    virtual void MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint64 val) = 0;
     virtual void MEM_AP_Fill(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint64 pattern) = 0;
     virtual void MEM_AP_AccessBatch(int apNumber, uint64 baseAddress, MEM_AP_OP* ops, unsigned numOps, unsigned* opsCompleted) = 0;
 };
@@ -119,7 +119,7 @@ public:
         Fail();
     }
 
-    virtual void MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint32 val)
+    virtual void MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint64 val)
     {
         Fail();
     }
@@ -177,7 +177,7 @@ public:
     virtual void MEM_AP_ReadRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, void* buf);
     virtual void MEM_AP_Write(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned size, const void* buf);
     virtual void MEM_AP_WriteRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, const void* buf);
-    virtual void MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint32 val);
+    virtual void MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint64 val);
     virtual void MEM_AP_Fill(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint64 pattern);
     virtual void MEM_AP_AccessBatch(int apNumber, uint64 baseAddress, MEM_AP_OP* ops, unsigned numOps, unsigned* opsCompleted);
 private:
@@ -524,7 +524,7 @@ void MemAPImpl::doWrite(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsi
         throw RddiEx(RDDI_FAILED, "CSWP memory write failed");
 }
 
-void MemAPImpl::MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint32 val)
+void MemAPImpl::MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint64 val)
 {
     if (!m_connected)
         throw RddiEx(RDDI_NOCONN, "MEM-AP interface not connected");
@@ -549,7 +549,7 @@ void MemAPImpl::MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SI
         break;
 
     case MEM_AP_ACC_32:
-        repVal = val;
+        repVal = static_cast<uint32>(val);
         bufSz = repeatCount;
         writeSize = repeatCount * 4;
         break;
@@ -586,7 +586,7 @@ void MemAPImpl::MEM_AP_Fill(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, 
         break;
 
     case MEM_AP_ACC_32:
-        repVal = pattern;
+        repVal = static_cast<uint32>(pattern);
         break;
 
     default:
@@ -839,7 +839,7 @@ void Env::MEM_AP_WriteRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize,
     m_impl->MEM_AP_WriteRepeat(apNumber, addr, accSize, flags, repeatCount, buf);
 }
 
-void Env::MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint32 val)
+void Env::MEM_AP_WriteValueRepeat(int apNumber, uint64 addr, MEM_AP_ACC_SIZE accSize, unsigned flags, unsigned repeatCount, uint64 val)
 {
     m_impl->MEM_AP_WriteValueRepeat(apNumber, addr, accSize, flags, repeatCount, val);
 }
