@@ -9,7 +9,7 @@ if "%REGIME%" == "" (
 
 set SRC_DIR=..\..\..
 set BUILD_DIR=build\win_32-x86_64\%REGIME%
-set GEN="Visual Studio 14 2015 Win64"
+set GEN="Visual Studio 17 2022"
 
 mkdir build
 mkdir build\win_32-x86_64
