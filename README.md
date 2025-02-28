@@ -171,7 +171,7 @@ CSWP server contains 2 layers:
 
 #### Trace
 
-A target-specific ETR driver is needed to service the streaming trace data to RDDI Streaming Trace library. The implementation details depend on the platform, operating system and Functional I/O machanism. An ETR dirver is not included in this repository.
+A target-specific ETR driver is needed to service the streaming trace data to the RDDI Streaming Trace library. The implementation details depend on the platform, operating system and Functional I/O machanism. An ETR dirver is not included in this repository.
 
 ## Licence
 
