@@ -126,10 +126,6 @@ To enable the optional `cswp_get_system_description()` call (target hosted SDF),
 
 ## RDDI Streaming Trace
 
-### ETR Streaming Trace drivers
-
-An ETR driver is needed to implement streaming trace functionality via some Functional I/O mechanism, such as USB or Ethernet. The implementation details depend on the platform, operating system and transport. Please contact [Arm support](mailto:support-software@arm.com) should additional guidance be required.
-
 ### Streaming trace capture
 
 streaming_trace_capture is an example application that uses the rddi_streaming_trace interface to capture and save trace on the host.
@@ -175,7 +171,7 @@ CSWP server contains 2 layers:
 
 #### Trace
 
-Trace is handled by a Linux-specific ETR driver, so it must be rewritten for another system.
+A target-specific ETR driver is needed to service the streaming trace data to RDDI Streaming Trace library. The implementation details depend on the platform, operating system and Functional I/O machanism. An ETR dirver is not included in this repository.
 
 ## Licence
 
@@ -183,4 +179,4 @@ Arm CoreSight Wire Protocol is provided under The University of Illinois/NCSA Op
 
 ## Contact
 
-For enquiries contact: [support-software@arm.com](mailto:support-software@arm.com).
+For support, raise an [Arm support case](https://support.developer.arm.com/my-cases/open-case/).
