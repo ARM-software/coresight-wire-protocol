@@ -543,7 +543,7 @@ int main(int argc, char **argv)
     const char* logFile = 0;
     const char* transport = "";
 
-    int verbose = 0;
+    int verbose = 3;
 
     if (argc > 1)
         chdir(argv[1]);
